@@ -7,9 +7,9 @@
 
 # Site Settings
 locale                   : "en"
-title                    : ""
+title                    : "Joshua Farrell"
 title_separator          : "-"
-name                     : "Joshua Farrell"
+name                     : ""
 description              : "Data Science Portfolio"
 url                      : "https://joshua-farrell.github.io" # the base hostname & protocol for your site e.g. "https://mmistakes.github.io"
 baseurl                  : # the subpath of your site, e.g. "/blog"
