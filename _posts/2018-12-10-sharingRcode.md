@@ -6,4 +6,7 @@ You can copy your file (any file - not just R and Rmd) there and link to it from
 
 Please see the sample code [here](https://joshua-farrell.github.io/shareddocs/temp.R)
 
+If you want to display the code on github browser directly, give the link on github project
+[This is it](https://github.com/joshua-farrell/joshua-farrell.github.io/blob/master/shareddocs/temp.R)
+
 
