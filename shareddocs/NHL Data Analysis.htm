@@ -1,0 +1,959 @@
+
+  NHL Data Analysis
+
+
+    Data setup
+
+Setup your working directory:
+
+|setwd("C:/Users/farre/Desktop/nhl")|
+
+Import the data:
+
+|data <- import("./data")|
+
+|## 
+## Importing 2017...
+## 
+## [1] "Importing: ./data/2017_ES.csv"
+## [1] "Importing: ./data/2017_PK.csv"
+## [1] "Importing: ./data/2017_PP.csv"
+## [1] "Importing: ./data/2017_TOT.csv"
+## 
+## Importing 2018...
+## 
+## [1] "Importing: ./data/2018_ES.csv"
+## [1] "Importing: ./data/2018_PK.csv"
+## [1] "Importing: ./data/2018_PP.csv"
+## [1] "Importing: ./data/2018_TOT.csv"
+## 
+## Merging 2017 and 2018...|
+
+I’m not going very deep into what variables are polluted due to the
+amount of time this has taken and doing so would take, but there are
+some variables that are clearly polluted and their values should be
+checked. For example, |TOT_CHIP| has values that have monetary representations but also others that
+don’t, and which don’t seem to be in the same units of scale. See the
+following output to get a better idea. When doing the data cleaning,
+this are all transformed into numeric variables, but they are
+problematic and should be investigated further.
+
+|unique(data[, "TOT_CHIP"])|
+
+|##   [1] NA              "$932,926.83"   "$144,969.51"   "$33,089.41"   
+##   [5] "$107,469.51"   "$15,853.66"    "$998,780.49"   "$270,731.71"  
+##   [9] "$15,406.51"    "$114,938.96"   "$96,646.34"    "$585,365.85"  
+##  [13] "$293,292.68"   "$8,170.73"     "$1,510,975.61" "$536,585.37"  
+##  [17] "$43,617.90"    "$29,878.05"    "$21,341.46"    "$54,878.05"   
+##  [21] "$73,170.73"    "$21,808.95"    "$1,065,853.66" "$320,121.95"  
+##  [25] "$80,487.80"    "$106,097.56"   "$22,560.98"    "$251,524.39"  
+##  [29] "$104,898.43"   "0"             "$48,780.49"    "$239,024.39"  
+##  [33] "$47,987.78"    "$1,400,000.00" "$7,906.50"     "$1,630,661.98"
+##  [37] "$23,170.73"    "$134,146.34"   "$384,146.34"   "$429,268.29"  
+##  [41] "$35,060.98"    "$126,829.27"   "$65,853.66"    "$1,170,731.71"
+##  [45] "$146,341.46"   "$204,878.05"   "$711,382.17"   "$127,439.02"  
+##  [49] "$439,024.39"   "$143,292.68"   "$198,170.73"   "$349,695.12"  
+##  [53] "$163,567.13"   "$472,560.98"   "$185,365.85"   "$14,227.65"   
+##  [57] "$203,048.78"   "$7,317.07"     "$4,526,829.27" "$402,439.02"  
+##  [61] "$792,682.93"   "$7,012.20"     "$483,739.88"   "$100,609.76"  
+##  [65] "$226,920.84"   "$68,292.68"    "$14,634.15"    "$590,447.18"  
+##  [69] "$228,048.78"   "$11,280.49"    "$939,634.15"   "$58,536.59"   
+##  [73] "$90,243.90"    "$91,463.41"    "$16,585.37"    "$195,121.95"  
+##  [77] "$20,731.71"    "$56,402.44"    "$122,926.83"   "$658,536.59"  
+##  [81] "$845,528.39"   "$36,585.37"    "$150,201.22"   "$636,585.37"  
+##  [85] "$76,331.33"    "$109,756.10"   "$49,847.56"    "$1,006,097.56"
+##  [89] "$153,658.54"   "$315,853.66"   "$590,853.66"   "$992,378.05"  
+##  [93] "$174,390.24"   "$1,067,073.17" "$179,573.17"   "$3,654,878.05"
+##  [97] "$59,817.07"    "$378,159.41"   "$242,154.38"   "$2,197,560.98"
+## [101] "$23,414.63"    "$7,621.95"     "$98,140.28"    "$142,682.93"  
+## [105] "$365,853.66"   "$186,585.37"   "$97,560.98"    "$798,170.73"  
+## [109] "$12,195.12"    "$853,658.54"   "$236,890.24"   "$157,926.83"  
+## [113] "$42,682.93"    "$335,365.85"   "$100,000.00"   "$1,682,926.83"
+## [117] "$1,332,317.07" "$1,606,707.32" "$1,243,902.44" "$327,134.27"  
+## [121] "$21,056.90"    "$31,707.32"    "$45,121.95"    "$162,195.12"  
+## [125] "$412,601.60"   "$1,237,804.88" "$243,902.44"   "$50,304.88"   
+## [129] "$213,414.63"   "$60,975.61"    "$266,463.41"   "$201,219.51"  
+## [133] "$150,304.88"   "$21,280.49"    "$527,134.15"   "$1,248,475.61"
+## [137] "$717,073.17"   "$823,170.73"   "$673,170.73"   "$157,926.77"  
+## [141] "$119,512.20"   "$804,878.05"   "$1,140,243.90" "$98,170.73"   
+## [145] "$53,638.18"    "$63,170.71"    "$18,292.68"    "$208,536.59"  
+## [149] "$760,975.61"   "$44,817.07"    "$475,609.76"   "$731,707.32"  
+## [153] "$1,097,560.98" "$30,487.80"    "$92,682.93"    "$326,829.27"  
+## [157] "$2,219,512.20" "$35,813.02"    "$530,487.80"   "$1,024,390.24"
+## [161] "$241,869.89"   "$38,109.76"    "$45,731.71"    "$70,121.95"   
+## [165] "$1,552,264.87" "$378,048.78"   "$115,853.66"   "$75,731.71"   
+## [169] "$121,951.22"   "$112,195.12"   "$158,536.59"   "$1,502,439.02"
+## [173] "$3,268,292.68" "$406,097.56"   "$53,658.54"    "$8,750.00"    
+## [177] "$200,000.00"   "$316,310.98"   "$40,243.90"    "$52,642.26"   
+## [181] "$570,121.95"   "$10,904.48"    "$514,634.15"   "$2,021,341.46"
+## [185] "$102,439.02"   "$120,228.66"   "$24,390.24"    "$26,524.39"   
+## [189] "$2,634,146.34" "$650,406.44"   "$634,146.34"   "$395,121.95"  
+## [193] "$375,609.76"   "$487,804.88"   "$241,463.41"   "$768,292.68"  
+## [197] "$396,341.46"   "$301,829.27"   "$128,048.78"   "$54,268.29"   
+## [201] "$742,682.93"   "$82,317.07"    "$338,414.63"   "$1,448,170.73"
+## [205] "$64,024.39"    "$413,617.84"   "$465,040.68"   "$53,353.66"   
+## [209] "$16,016.27"    "$459,603.66"   "$1,849,593.35" "$516,463.41"  
+## [213] "$268,292.68"   "$101,524.39"   "$679,442.56"   "$312,500.00"  
+## [217] "$152,439.04"   "$532,926.83"   "$147,398.32"   "$130,853.71"  
+## [221] "$67,073.17"    "$92,103.70"    "$974,390.24"   "$253,963.41"  
+## [225] "$3,625,000.00" "$463,414.63"   "$39,634.15"    "$329,268.29"  
+## [229] "$209,027.38"   "$1,318,292.68" "$1,344,512.09" "$4,423,170.73"
+## [233] "$84,146.34"    "$2,317,073.17" "$83,231.71"    "$282,926.83"  
+## [237] "$54,522.38"    "$59,146.34"    "$958,841.46"   "$219,512.20"  
+## [241] "$286,585.37"   "$118,780.54"   "$203,252.01"   "$34,146.34"   
+## [245] "$57,621.95"    "$130,081.27"   "$559,756.10"   "$167,682.93"  
+## [249] "$117,073.17"   "$263,567.07"   "$836,585.37"   "$25,000.00"   
+## [253] "$29,268.29"    "$345,528.52"   "$140,853.66"   "$757,926.83"  
+## [257] "$4,762,195.12" "$165,396.34"   "$1,426,829.27" "$347,560.98"  
+## [261] "$44,207.32"    "$192,073.17"   "$8,963.41"     "$210,365.85"  
+## [265] "$220,121.95"   "$379,024.24"   "$79,756.10"    "$914,634.15"  
+## [269] "$1,280,487.80" "$179,268.29"   "$48,475.61"    "$610,975.61"  
+## [273] "$495,121.95"   "$284,552.82"   "$113,414.63"   "$227,896.34"  
+## [277] "$10,472.56"    "$76,219.51"    "$1,195,122.02" "$234,146.34"  
+## [281] "$145,861.73"   "$621,951.22"   "$92,479.63"    "$422,560.98"  
+## [285] "$79,268.29"    "$424,390.24"   "$292,682.93"   "$117,235.83"  
+## [289] "$119,054.88"   "$221,097.48"   "$248,780.49"   "$345,731.71"  
+## [293] "$131,707.32"   "$168,455.22"   "$156,097.56"   "$52,286.59"   
+## [297] "$350,609.76"   "$831,097.56"   "$469,960.00"   "$795,731.71"  
+## [301] "$134,451.22"   "$1,676,829.00" "$845,731.71"   "$14,024.39"   
+## [305] "$529,268.29"   "$179,512.20"   "$1,768,292.68" "$575,152.44"  
+## [309] "$414,634.15"   "$224,085.37"   "$435,365.85"   "$51,219.51"   
+## [313] "$260,975.61"   "$85,365.85"    "$63,109.76"    "$7,388.21"    
+## [317] "$21,951.22"    "$2,446,341.46" "$665,853.66"   "$25,304.88"   
+## [321] "$162,804.88"   "$137,195.12"   "$209,451.22"   "$148,170.73"  
+## [325] "$838,414.63"   "$155,487.80"   "$83,536.59"    "$184,146.34"  
+## [329] "$237,804.88"   "$134,756.16"   "$34,756.10"    "$144,817.07"  
+## [333] "$379,573.17"   "$512,195.12"   "$625,609.76"   "$1,273,170.73"
+## [337] "$6,737,804.88" "$1,365,853.66" "$28,048.78"    "$426,829.27"  
+## [341] "$2,576,219.51" "$493,902.44"   "$832,317.07"   "$352,134.15"  
+## [345] "$1,756,097.56" "$21,320.12"    "$1,573,780.49" "$1,014,634.15"
+## [349] "$246,951.22"   "$17,357.73"    "$1,152,439.02" "$753,048.78"  
+## [353] "$27,439.02"    "$201,757.56"   "$67,682.93"    "$412,195.12"  
+## [357] "$653,963.41"   "$347,926.83"   "$139,024.39"   "$8,536.59"    
+## [361] "$362,804.88"   "$383,275.27"   "$56,097.56"    "$576,219.51"  
+## [365] "$90,548.78"    "$33,841.46"    "$182,926.83"   "$87,235.80"   
+## [369] "$272,611.89"   "$21,036.59"    "$68,780.49"    "195"          
+## [373] "204"           "87"            "11"            "17"           
+## [377] "82"            "579"           "55"            "302"          
+## [381] "339"           "262"           "13"            "124"          
+## [385] "221"           "1127"          "732"           "275"          
+## [389] "341"           "165"           "550"           "25"           
+## [393] "788"           "51"            "305"           "10"           
+## [397] "510"           "457"           "1122"          "277"          
+## [401] "549"           "517"           "477"           "3537"         
+## [405] "439"           "481"           "741"           "88"           
+## [409] "128"           "293"           "390"           "272"          
+## [413] "27"            "164"           "52"            "185"          
+## [417] "675"           "21"            "207"           "380"          
+## [421] "2004"          "415"           "190"           "266"          
+## [425] "100"           "43"            "310"           "73"           
+## [429] "46"            "206"           "65"            "222"          
+## [433] "95"            "372"           "366"           "61"           
+## [437] "35"            "62"            "211"           "34"           
+## [441] "235"           "63"            "629"           "449"          
+## [445] "174"           "268"           "217"           "360"          
+## [449] "854"           "48"            "9"             "23"           
+## [453] "707"           "230"           "44"            "159"          
+## [457] "329"           "40"            "242"           "902"          
+## [461] "212"           "995"           "227"           "250"          
+## [465] "307"           "251"           "198"           "297"          
+## [469] "358"           "20"            "396"           "314"          
+## [473] "42"            "279"           "203"           "252"          
+## [477] "1354"          "725"           "345"           "225"          
+## [481] "3421"          "278"           "79"            "285"          
+## [485] "67"            "57"            "215"           "244"          
+## [489] "290"           "54"            "512"           "456"          
+## [493] "256"           "84"            "463"           "232"          
+## [497] "30"            "622"           "276"           "539"          
+## [501] "29"            "1207"          "191"           "255"          
+## [505] "200"           "321"           "1366"          "378"          
+## [509] "8"             "192"           "219"           "265"          
+## [513] "257"           "1512"          "445"           "616"          
+## [517] "988"           "68"            "392"           "317"          
+## [521] "231"           "259"           "270"           "1079"         
+## [525] "253"           "74"            "109"           "32"           
+## [529] "933"           "2920"          "1099"          "116"          
+## [533] "751"           "158"           "421"           "110"          
+## [537] "368"           "575"           "28"            "1024"         
+## [541] "283"           "131"           "424"           "216"          
+## [545] "1128"|
+
+The proportion of NAs in the data is very large. You can see the
+descriptive statistics for the distribution across all observations and
+variables in the following code. As you can see, the mean proportion of
+NAs per variable is 0.53 and the first quartile is already at 0.31,
+which is very high. For observations the numbers are similarly bad. This
+will have very bad implications for the ML models, so we need a
+mechanism to reduce the proportion of NAs while trying to keep most of
+the useful information.
+
+If you want to see proportions in a case-by-case (i.e. “by row” or “by
+column”), you can remove the |summary()| function that wrapping any of it.
+
+|summary(proportion_of_nas_per_observation(data))|
+
+|##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##  0.2683  0.3113  0.4611  0.5316  0.8127  0.8850|
+
+|summary(proportion_of_nas_per_variable(data))|
+
+|##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##  0.0000  0.3345  0.6667  0.5316  0.6678  0.8948|
+
+To reduce the NA proportions in the data, we look for observations and
+variables that have proportions larger than |NA_OBS_PROPORTION_THRESHOLD| and |NA_VAR_PROPORTION_THRESHOLD|, respectively, and delete them if they do. In the case of variables,
+there’s a |NA_VAR_WHITELIST| variable that will keep any variables inside it, even if they don’t
+pass the NAs proportion test. All of these constants can be modified in the |constants.R| file.
+
+Since I’m not familiar with the data, I can’t know which variables
+whould be white-listed, but, if you do, you should definitely add them
+to the appropriate parameter in the |cosntants.R| file.
+
+|before_n_obs <- nrow(data)
+before_n_vars <- ncol(data)|
+
+|data <- clean(data)|
+
+|## 
+## Cleaning non-whitlisted character variables...
+## 
+## 
+## Keeping variables with acceptable NA proportions...
+## 
+## 
+## Keeping observations with acceptable NA proportions...
+## 
+## 
+## Keeping observations non-NA salary...
+## 
+## 
+## Disaggregating due to players with multiple teams...
+## 
+##   [1] "COL/MTL"            "EDM/NYR"            "DAL/MTL"           
+##   [4] "N.J/NSH/VAN"        "T.B/TOR"            "ARI/WPG"           
+##   [7] "OTT/VAN"            "PIT/TOR"            "ANA/VAN"           
+##  [10] "EDM/MTL"            "ANA/DAL"            "N.J/NSH"           
+##  [13] "PHI/T.B"            "S.J/VAN"            "BUF/NSH"           
+##  [16] "FLA/TOR"            "CAR/PIT"            "ARI/MIN"           
+##  [19] "ARI/TOR"            "NSH/STL"            "COL/L.A"           
+##  [22] "CGY/OTT"            "ARI/NYR"            "CHI/DET"           
+##  [25] "FLA/NYR"            "L.A/MTL"            "CBJ/DAL"           
+##  [28] "DET/TOR"            "FLA/T.B"            "COL/NSH"           
+##  [31] "MTL/T.B"            "COL/S.J"            "ANA/N.J"           
+##  [34] "CHI/DAL"            "DET/MTL"            "CBJ/N.J"           
+##  [37] "NYR/OTT"            "CAR/STL"            "STL/WSH"           
+##  [40] "ANA/FLA"            "COL/TOR"            "DET/NYR"           
+##  [43] "BOS/WPG"            "CAR/OTT"            "ARI/CGY"           
+##  [46] "PHI/PIT"            "DET/FLA"            "OTT/S.J"           
+##  [49] "NSH, EDM"           "PHI, COL"           "PIT, ARI"          
+##  [52] "BOS, NYR"           "OTT, PIT"           "TBL, ANA"          
+##  [55] "LAK, EDM"           "SJS, VGK"           "NYI, ANA"          
+##  [58] "WSH, CBJ"           "PIT, CBJ"           "DAL, NYR"          
+##  [61] "MTL, EDM, NYI"      "LAK, VAN"           "COL, OTT"          
+##  [64] "ARI, CHI"           "TBL, OTT"           "TOR, SJS"          
+##  [67] "LAK, OTT"           "NSH, COL"           "NYR, NJD"          
+##  [70] "CGY, ARI"           "CHI, NSH"           "NJD, ANA"          
+##  [73] "NYR, BOS"           "MTL, WSH"           "EDM, LAK, CBJ, VAN"
+##  [76] "CAR, PIT"           "BUF, SJS"           "CHI, WSH"          
+##  [79] "VGK, VAN"           "EDM, CBJ"           "EDM, NJD"          
+##  [82] "NYR, TBL"           "NSH, NYR"           "MTL, LAK"          
+##  [85] "MTL, WPG"           "CBJ, VAN"           "TBL, NYR"          
+##  [88] "SJS, BUF"           "OTT, PHI"           "DAL, PIT"          
+##  [91] "STL, OTT"           "CHI, ARI"           "OTT, LAK"          
+##  [94] "MTL, TOR"           "STL, MIN"           "PIT, VGK"          
+##  [97] "MIN, MTL"           "ARI, LAK"           "ANA, MTL"          
+## [100] "DET, PIT"           "LAK, OTT, CGY"      "TOR, STL"          
+## [103] "STL, WPG"           "MIN, CGY"           "DET, VGK"          
+## [106] "OTT, NSH"           "VAN, CBJ"           "ANA, NJD"          
+## [109] "BOS, FLA"           "ANA, NYI"           "WSH, EDM"          
+## [112] "PIT, DET, BUF"      "CHI, BOS"|
+
+After we apply our cleaning process, the mean proportion of NAs for both
+variables and observations goes down to 0.38 and we keep 44% of the
+variables and 70% of the observations, which is not too bad at all given
+the huge proportion of NAs in the data. Note that this also acts as an
+initial variable selection procedure, and it can be relaxed or made more
+restrictive by modifying the |NA_OBS_PROPORTION_THRESHOLD| and |NA_VAR_PROPORTION_THRESHOLD| in the |constants.R| file.
+
+|summary(proportion_of_nas_per_observation(data))|
+
+|##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+## 0.00000 0.02445 0.71394 0.37783 0.71394 0.72127|
+
+|summary(proportion_of_nas_per_variable(data))|
+
+|##      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+## 0.0000000 0.0005283 0.5055468 0.3778288 0.5108294 0.8954041|
+
+|ncol(data) / before_n_vars|
+
+|## [1] 0.4479737|
+
+|nrow(data) / before_n_obs|
+
+|## [1] 0.7089888|
+
+This is the clean and pre-processed data set, and it’s saved for
+reference (before teh variable selection process is applied), since it
+may be easier to check for correctness outside of R.
+
+|write.csv(data, "./data.csv", row.names = FALSE)|
+
+Now we are going to impute the mode to each NA in each categorical
+variable, and the mean in the case of numerical variables. If we don’t
+do this, the, sill very large, number of NAs will produce errors in our
+variable selection and model training processes. After the imputation,
+we separete the data into our train, test, and full data sets
+
+|data <- separate(impute(data))|
+
+
+    Visualizations
+
+Salary distribution:
+
+|hist(data[["full"]]$Salary)|
+
+Since there’s a very large number of numeric variables, we can’t
+generate a single correlations plots that has all the information
+simultaneously. We show the correlations by variable random samples,
+which means that you should execute the following code multiple times to
+get a rough estimate of the correlations among all variables.
+
+|random_correlations_graph(data, n_variables = 20)|
+
+|random_correlations_graph(data, n_variables = 20)|
+
+|random_correlations_graph(data, n_variables = 20)|
+
+The following code automatically generate multiple correlations graphs
+and saves them to disk for you. You can modify the parameters to your
+liking. Values marked with a cross on top of them mean that their
+p-value is larger than 0.01.
+
+|generate_multiple_random_correlation_graphs(
+    n_variables = 20,
+    n_graphs = 10,
+    data = data
+)|
+
+We also are able to create scatter graphs where the size of each point
+is determined a variable’s value, and the color is determined by the
+salary. Some examples of the different patterns that can be found with
+these graphs are the following. Note that to interpret these correctly
+good domain knowledge about NHL and the measured variables is required,
+but even if no such knowledge is available, some interesting ideas can
+be infered for data cleaning and feature engineering purposes. Like
+these, tere are many other interesting patterns hidden in this data.
+
+|scatter_graph_with_size_and_salary_color(
+    data,
+    x = "ES_CF.QoC",
+    y = "TOT_FOL.Close",
+    size = "PK_CF.QoT"
+)|
+
+|scatter_graph_with_size_and_salary_color(
+    data,
+    x = "ES_CF.QoT",
+    y = "PK_PDO",
+    size = "PK_iHDf"
+)|
+
+|scatter_graph_with_size_and_salary_color(
+    data,
+    x = "ES_DZS.1",
+    y = "PK_TOI.QoT",
+    size = "ES_iCF"
+)|
+
+|scatter_graph_with_size_and_salary_color(
+    data,
+    x = "ES_F.Tied",
+    y = "ES_C.Tied",
+    size = "PP_iPEND"
+)|
+
+|scatter_graph_with_size_and_salary_color(
+    data,
+    x = "ES_FA",
+    y = "ES_GF.1",
+    size = "ES_F.Down"
+)|
+
+|scatter_graph_with_size_and_salary_color(
+    data,
+    x = "ES_iHA",
+    y = "TOT_iHA",
+    size = "ES_iSF.1"
+)|
+
+To create |n_graphs| random graphs (the combinations for all available graphs are too much
+to create at once, it would be around 10,827,401) we use the following:
+
+    *CAUTION*: The following code can take a long time to finish
+    depending on how many graphs you specify. To avoid any problems,
+    it’s not activiated here and is just left as reference.
+
+|generate_multiple_random_scatter_graphs(
+    n_graphs = 100,
+    data = data
+)|
+
+The scatter graphs created show some very interesting behavior for many
+combinations. Those visualizations together with domain knowledge around
+the problem can help with cleaning and feature engineering to increase
+the predictive power of the models, and it’s something that I recommend
+you explor further.
+
+
+    Variable selection
+
+Variable selection is performed with two steps. First, we remove
+variables which are highly correlated with others. The logic behind this
+is that if they are highly correlated the information they provide for
+the analysis is redundant, and, given the large number of variables in
+the analysis, we want to minimize the number of them while we maximize
+the information kept. The second step is performed with Recursive
+Feature Elimination (RFE).
+
+The |selection| object contains the following attributes: |data| which is the data with the variable selection applied, |graph| which shows the accuracy change as more variables are added, |n_variables| which is the number of variables selected, and |variables| which are the variables actually selected. Internally, Random Forests
+are used to measure variable importance.
+
+|selection <- variable_selection(data, "Salary")|
+
+|## 
+## Removing variables with high correlations...
+## 
+## 
+## Variables removed (288):
+## 
+## 
+##   [1] "ES_CA"         "ES_CA.1"       "ES_CA.2"       "ES_CA.3"      
+##   [5] "ES_CF"         "ES_CF.1"       "ES_CF.2"       "ES_CF.3"      
+##   [9] "ES_DZS"        "ES_DZS.1"      "ES_DZS.2"      "ES_dzSAPF"    
+##  [13] "ES_dzSFPF"     "ES_Exp.dzNGPF" "ES_Exp.dzNSPF" "ES_Exp.ozNGPF"
+##  [17] "ES_Exp.ozNSPF" "ES_F.Close"    "ES_FA"         "ES_FA.1"      
+##  [21] "ES_FA.2"       "ES_FA.3"       "ES_FF"         "ES_FF.1"      
+##  [25] "ES_FF.2"       "ES_FF.3"       "ES_FOvsL"      "ES_FOvsR"     
+##  [29] "ES_GA.1"       "ES_GF"         "ES_GF.1"       "ES_GP"        
+##  [33] "ES_iCF"        "ES_iCF.1"      "ES_iDS"        "ES_iFF"       
+##  [37] "ES_iFF.1"      "ES_iFOL"       "ES_iFOL.1"     "ES_iFOW"      
+##  [41] "ES_iFOW.1"     "ES_iGVA"       "ES_iSF"        "ES_iSF.1"     
+##  [45] "ES_iTKA"       "ES_ixG"        "ES_nzFO"       "ES_NZS"       
+##  [49] "ES_NZS.1"      "ES_nzSAPF"     "ES_nzSFPF"     "ES_OpFO"      
+##  [53] "ES_OpFOW"      "ES_ozFO"       "ES_OZS"        "ES_OZS.1"     
+##  [57] "ES_OZS.2"      "ES_ozSAPF"     "ES_ozSFPF"     "ES_Pass"      
+##  [61] "ES_PEND"       "ES_PENT"       "ES_PTS"        "ES_PTS.60"    
+##  [65] "ES_RelF."      "ES_RopFO"      "ES_SA"         "ES_SA.1"      
+##  [69] "ES_SCA"        "ES_SCF"        "ES_SF"         "ES_SF.1"      
+##  [73] "ES_SH."        "ES_TOI"        "ES_TOI."       "ES_TOI.1"     
+##  [77] "ES_TOI.2"      "ES_TOI.3"      "ES_TOI.GP"     "ES_TOI.QoT"   
+##  [81] "ES_xGA"        "ES_xGF"        "PK_CA.1"       "PK_CF"        
+##  [85] "PK_CF.1"       "PK_DZS"        "PK_FA"         "PK_FA.1"      
+##  [89] "PK_FF"         "PK_FF.1"       "PK_GA"         "PK_GA.1"      
+##  [93] "PK_GF.1"       "PK_GP"         "PK_iBLK"       "PK_iFF"       
+##  [97] "PK_iFOW"       "PK_iGVA"       "PK_iHF"        "PK_iHF.1"     
+## [101] "PK_iMiss"      "PK_iSF"        "PK_iSF.1"      "PK_iSF.2"     
+## [105] "PK_iTKA"       "PK_iTKA.1"     "PK_ixG"        "PK_NZS"       
+## [109] "PK_NZS.1"      "PK_OZS"        "PK_Pass"       "PK_PDO"       
+## [113] "PK_PEND"       "PK_PTS"        "PK_SA"         "PK_SA.1"      
+## [117] "PK_SCA"        "PK_SCF"        "PK_SF"         "PK_SF.1"      
+## [121] "PK_SV."        "PK_TOI"        "PK_TOI."       "PK_TOI.1"     
+## [125] "PK_TOI.2"      "PK_TOI.GP"     "PK_TOI.QoT"    "PK_xGA"       
+## [129] "PK_xGF"        "PK_xGF.QoT"    "PK_ZS."        "PP_CA"        
+## [133] "PP_CA.1"       "PP_CF"         "PP_CF.1"       "PP_CF.QoT"    
+## [137] "PP_FA"         "PP_FA.1"       "PP_FF"         "PP_FF.1"      
+## [141] "PP_GA.1"       "PP_GF"         "PP_GF.1"       "PP_GP"        
+## [145] "PP_iCF"        "PP_iCF.1"      "PP_iFF"        "PP_iFF.1"     
+## [149] "PP_iFOL"       "PP_iFOL.1"     "PP_iFOW"       "PP_iFOW.1"    
+## [153] "PP_iGVA"       "PP_iGVA.1"     "PP_iMiss"      "PP_iPENT"     
+## [157] "PP_iSF"        "PP_iSF.1"      "PP_iSF.2"      "PP_ixG"       
+## [161] "PP_NZS"        "PP_NZS.1"      "PP_OZS"        "PP_OZS.1"     
+## [165] "PP_Pass"       "PP_PTS"        "PP_SA"         "PP_SA.1"      
+## [169] "PP_SCA"        "PP_SCF"        "PP_SF"         "PP_SF.1"      
+## [173] "PP_TOI"        "PP_TOI."       "PP_TOI.1"      "PP_TOI.2"     
+## [177] "PP_TOI.GP"     "PP_TOI.QoT"    "PP_xGA"        "PP_xGF"       
+## [181] "PP_xGF.QoT"    "PP_ZS."        "TOT_CF"        "TOT_FA"       
+## [185] "TOT_FF"        "TOT_FOL.Close" "TOT_FOL.Down"  "TOT_FOL.Up"   
+## [189] "TOT_FOW.Close" "TOT_FOW.Down"  "TOT_FOW.Up"    "TOT_GA"       
+## [193] "TOT_GF"        "TOT_GP"        "TOT_GS"        "TOT_iCF"      
+## [197] "TOT_iDS"       "TOT_iFF"       "TOT_iFOL"      "TOT_iFOW"     
+## [201] "TOT_iGVA"      "TOT_iHA"       "TOT_iMiss"     "TOT_iPENT"    
+## [205] "TOT_iSF"       "TOT_iTKA"      "TOT_ixG"       "TOT_Min"      
+## [209] "TOT_NPD"       "TOT_nzFOL"     "TOT_nzFOW"     "TOT_OPS"      
+## [213] "TOT_Ovrl"      "TOT_ozFOL"     "TOT_ozFOW"     "TOT_Pass"     
+## [217] "TOT_PDO"       "TOT_PEND"      "TOT_PENT"      "TOT_PIM"      
+## [221] "TOT_PS"        "TOT_PTS"       "TOT_S.Bkhd"    "TOT_S.Slap"   
+## [225] "TOT_S.Snap"    "TOT_S.Tip"     "TOT_S.Wrst"    "TOT_SA"       
+## [229] "TOT_SCF"       "TOT_SF"        "TOT_Shifts"    "TOT_SV.perc." 
+## [233] "TOT_TOI"       "TOT_TOI.GP"    "TOT_TOI.perc." "TOT_Wide"     
+## [237] "TOT_Wt"        "TOT_xGA"       "TOT_xGF"       "ES_A"         
+## [241] "ES_C.Close"    "ES_dzFO"       "ES_C.Down"     "ES_C.Tied"    
+## [245] "ES_C.Up"       "ES_HopFO"      "ES_GA"         "ES_G"         
+## [249] "ES_A1"         "ES_HopFOW"     "ES_PDO"        "ES_CF.QoC"    
+## [253] "ES_CF.QoT"     "ES_RelZS."     "PK_A"          "PK_CA"        
+## [257] "ES_iBLK"       "PK_DZS.1"      "PK_iCF"        "PK_iCF.1"     
+## [261] "PK_iFOL"       "PK_iFOL.1"     "PK_iBLK.1"     "PK_iDS"       
+## [265] "PK_iFF.1"      "PK_CF.QoC"     "PK_GF"         "ES_xGF.QoT"   
+## [269] "PP_A"          "PP_DZS"        "PP_G"          "PP_iDS"       
+## [273] "PP_iHA"        "PP_iHF"        "PP_iTKA"       "PP_PDO"       
+## [277] "TOT_CA"        "TOT_dzFOL"     "TOT_A1"        "TOT_G"        
+## [281] "TOT_G.Wrst"    "TOT_DPS"       "TOT_Grit"      "ES_iHA"       
+## [285] "ES_iHDf"       "ES_iHF"        "ES_IPP."       "TOT_iSCF"     
+## 
+## Variables kept (116):
+## 
+## 
+##   [1] "Year"          "Position"      "Team"          "Salary"       
+##   [5] "ES_BLK."       "ES_dzGAPF"     "ES_dzGFPF"     "ES_F.Down"    
+##   [9] "ES_F.Tied"     "ES_F.Up"       "ES_FO."        "ES_FO.vsL"    
+##  [13] "ES_FO.vsR"     "ES_iPEND"      "ES_iPenDf"     "ES_iPENT"     
+##  [17] "ES_iSCF"       "ES_NGPF"       "ES_NSPF"       "ES_nzGAPF"    
+##  [21] "ES_nzGFPF"     "ES_ozGAPF"     "ES_ozGFPF"     "ES_Pace"      
+##  [25] "ES_RelC."      "ES_RopFOW"     "ES_SV."        "ES_TOI.QoC"   
+##  [29] "ES_xGF.QoC"    "ES_ZS."        "PK_A1"         "PK_BLK."      
+##  [33] "PK_CF.QoT"     "PK_FO."        "PK_G"          "PK_iFOW.1"    
+##  [37] "PK_iGVA.1"     "PK_iHA"        "PK_iHDf"       "PK_iPEND"     
+##  [41] "PK_iPenDf"     "PK_iPENT"      "PK_iSCF"       "PK_OZS.1"     
+##  [45] "PK_Pace"       "PK_PENT"       "PK_RelZS."     "PK_SH."       
+##  [49] "PK_TOI.QoC"    "PK_xGF.QoC"    "PP_A1"         "PP_BLK."      
+##  [53] "PP_CF.QoC"     "PP_DZS.1"      "PP_FO."        "PP_GA"        
+##  [57] "PP_iBLK"       "PP_iHDf"       "PP_iHF.1"      "PP_iPEND"     
+##  [61] "PP_iPenDf"     "PP_IPP."       "PP_iSCF"       "PP_iTKA.1"    
+##  [65] "PP_Pace"       "PP_PEND"       "PP_PENT"       "PP_PTS.60"    
+##  [69] "PP_RelZS."     "PP_SH."        "PP_SV."        "PP_TOI.QoC"   
+##  [73] "PP_xGF.QoC"    "TOT_BLK.perc." "TOT_CBar"      "TOT_Cntry"    
+##  [77] "TOT_DAP"       "TOT_DftRd"     "TOT_DftYr"     "TOT_dzFOW"    
+##  [81] "TOT_ENG"       "TOT_EPM"       "TOT_FO.perc."  "TOT_G.Bkhd"   
+##  [85] "TOT_G.Dflct"   "TOT_G.Slap"    "TOT_G.Snap"    "TOT_G.Tip"    
+##  [89] "TOT_G.Wrap"    "TOT_Game"      "TOT_GS.G"      "TOT_GWG"      
+##  [93] "TOT_Ht"        "TOT_iBLK"      "TOT_iHDf"      "TOT_iHF"      
+##  [97] "TOT_iPEND"     "TOT_iPenDf"    "TOT_IPP.perc." "TOT_Maj"      
+## [101] "TOT_Match"     "TOT_Misc"      "TOT_OTG"       "TOT_Over"     
+## [105] "TOT_Pace"      "TOT_PM"        "TOT_Post"      "TOT_PSA"      
+## [109] "TOT_PSG"       "TOT_S.Dflct"   "TOT_S.Wrap"    "TOT_SCA"      
+## [113] "TOT_sDist"     "TOT_SH.perc."  "TOT_Status"    "TOT_X1G"      
+## 
+## Creating selection data structure with RFE...
+## 
+## +(rfe) fit Fold1 size: 115 
+## -(rfe) fit Fold1 size: 115 
+## +(rfe) imp Fold1 
+## -(rfe) imp Fold1 
+## +(rfe) fit Fold1 size: 105 
+## -(rfe) fit Fold1 size: 105 
+## +(rfe) fit Fold1 size:  85 
+## -(rfe) fit Fold1 size:  85 
+## +(rfe) fit Fold1 size:  65 
+## -(rfe) fit Fold1 size:  65 
+## +(rfe) fit Fold1 size:  45 
+## -(rfe) fit Fold1 size:  45 
+## +(rfe) fit Fold1 size:  25 
+## -(rfe) fit Fold1 size:  25 
+## +(rfe) fit Fold1 size:   5 
+## -(rfe) fit Fold1 size:   5 
+## +(rfe) fit Fold2 size: 115 
+## -(rfe) fit Fold2 size: 115 
+## +(rfe) imp Fold2 
+## -(rfe) imp Fold2 
+## +(rfe) fit Fold2 size: 105 
+## -(rfe) fit Fold2 size: 105 
+## +(rfe) fit Fold2 size:  85 
+## -(rfe) fit Fold2 size:  85 
+## +(rfe) fit Fold2 size:  65 
+## -(rfe) fit Fold2 size:  65 
+## +(rfe) fit Fold2 size:  45 
+## -(rfe) fit Fold2 size:  45 
+## +(rfe) fit Fold2 size:  25 
+## -(rfe) fit Fold2 size:  25 
+## +(rfe) fit Fold2 size:   5 
+## -(rfe) fit Fold2 size:   5 
+## 
+## Recursive feature selection
+## 
+## Outer resampling method: Cross-Validated (2 fold) 
+## 
+## Resampling performance over subset size:
+## 
+##  Variables    RMSE Rsquared    MAE RMSESD RsquaredSD MAESD Selected
+##          5 1399898   0.6557 924782  51727   0.005570  1038         
+##         25 1306489   0.7030 850766  18393   0.005571 37674        *
+##         45 1315033   0.7003 854590  22135   0.005771 35494         
+##         65 1362924   0.6877 895790  73953   0.004450 23042         
+##         85 1358628   0.6886 896070  70863   0.005494 16738         
+##        105 1357888   0.6890 894136  71030   0.005806 14764         
+##        115 1355922   0.6895 891246  73356   0.006198 16993         
+## 
+## The top 5 variables (out of 25):
+##    TOT_Status, TOT_GS.G, TOT_DftYr, TOT_SCA, TOT_iBLK|
+
+To explore the selection results, you can use the following to see the
+filtered datasets, variables, and optimization graph.
+
+|head(selection[["data"]][["full"]])
+head(selection[["data"]][["train"]])
+head(selection[["data"]][["test"]])|
+
+|selection[["n_variables"]]|
+
+|## [1] 25|
+
+|selection[["variables"]]|
+
+|##  [1] "TOT_Status"    "TOT_GS.G"      "TOT_DftYr"     "TOT_SCA"      
+##  [5] "TOT_iBLK"      "TOT_Over"      "TOT_DftRd"     "ES_TOI.QoC"   
+##  [9] "TOT_iPEND"     "TOT_GWG"       "TOT_iHF"       "TOT_SH.perc." 
+## [13] "TOT_Cntry"     "PP_A1"         "TOT_Pace"      "PP_PEND"      
+## [17] "TOT_Post"      "PP_Pace"       "TOT_EPM"       "TOT_PM"       
+## [21] "TOT_IPP.perc." "TOT_G.Snap"    "PP_GA"         "TOT_iHDf"     
+## [25] "TOT_X1G"|
+
+|selection[["graph"]]|
+
+
+    Model application
+
+Feel free to add other models, you can find the full list here:
+https://topepo.github.io/caret/available-models.html
+
+These models depend on external packages. If you don’t have installed in
+your system, when you execute the code, you’ll be notified that you
+don’t have them, and you’ll be asked whether you want to install them.
+If you do, execution will continue normally after the corresponding
+installations.
+
+|models <- list(
+    "random_forest" = "rf",
+    "linear_regression" = "glm",
+    "k_nearest_neighbors" = "knn"
+)|
+
+|results <- best_results(selection[["data"]], "Salary", models)|
+
+|## [1] "    - random_forest"
+## + Fold1: mtry= 2 
+## - Fold1: mtry= 2 
+## + Fold1: mtry=23 
+## - Fold1: mtry=23 
+## + Fold1: mtry=45 
+## - Fold1: mtry=45 
+## + Fold2: mtry= 2 
+## - Fold2: mtry= 2 
+## + Fold2: mtry=23 
+## - Fold2: mtry=23 
+## + Fold2: mtry=45 
+## - Fold2: mtry=45 
+## Aggregating results
+## Selecting tuning parameters
+## Fitting mtry = 23 on full training set
+## [1] "    - linear_regression"
+## + Fold1: parameter=none|
+
+|## Warning in predict.lm(object, newdata, se.fit, scale = 1, type =
+## ifelse(type == : prediction from a rank-deficient fit may be misleading|
+
+|## - Fold1: parameter=none 
+## + Fold2: parameter=none|
+
+|## Warning in predict.lm(object, newdata, se.fit, scale = 1, type =
+## ifelse(type == : prediction from a rank-deficient fit may be misleading|
+
+|## - Fold2: parameter=none 
+## Aggregating results
+## Fitting final model on full training set
+## [1] "    - k_nearest_neighbors"
+## + Fold1: k=5 
+## - Fold1: k=5 
+## + Fold1: k=7 
+## - Fold1: k=7 
+## + Fold1: k=9 
+## - Fold1: k=9 
+## + Fold2: k=5 
+## - Fold2: k=5 
+## + Fold2: k=7 
+## - Fold2: k=7 
+## + Fold2: k=9 
+## - Fold2: k=9 
+## Aggregating results
+## Selecting tuning parameters
+## Fitting k = 9 on full training set|
+
+
+    Results exploration
+
+The |metrics| attribute has find three different accuracy metrics: |RMSE| (Root Mean Squared Error), |MAPE| (Mean Absolute Percentage Error), and |PPE10| (Percentage Predicted Error within 10%).
+
+Models available:
+
+|names(results)|
+
+|## [1] "random_forest"       "linear_regression"   "k_nearest_neighbors"|
+
+Random Forest results:
+
+|names(results[["random_forest"]])|
+
+|## [1] "metrics"    "predictor"  "importance"|
+
+See the |predictor| object for Random Forests:
+
+|results[["random_forest"]][["predictor"]]|
+
+|## Random Forest 
+## 
+## 1325 samples
+##   25 predictor
+## 
+## No pre-processing
+## Resampling: Cross-Validated (2 fold) 
+## Summary of sample sizes: 663, 662 
+## Resampling results across tuning parameters:
+## 
+##   mtry  RMSE     Rsquared   MAE      
+##    2    1616292  0.5886752  1122702.3
+##   23    1343105  0.6748149   842603.0
+##   45    1349923  0.6693182   841237.8
+## 
+## RMSE was used to select the optimal model using the smallest value.
+## The final value used for the model was mtry = 23.|
+
+The results I’m seeing in average are the following. Note that these may
+be different every time you run the analysis because we’re not
+controlling the “seed” for the randomized algorithmns (this is done on
+purpose to see variuos results, but for publishing or sharing results
+with someone else, we should control the seed).
+
+Model 	Metric 	Value
+k-Nearest Neighbors 	MAPE 	0.78
+k-Nearest Neighbors 	RMSE 	1,254,133
+k-Nearest Neighbors 	PPE10 	0.11
+Linear Regression 	MAPE 	0.94
+Linear Regression 	RMSE 	1,149,743
+Linear Regression 	PPE10 	0.11
+Random Forest 	MAPE 	0.50
+Random Forest 	RMSE 	781,116
+Random Forest 	PPE10 	0.20
+
+The results without the |Team| variable are (may be different for you):
+
+Model 	Metric 	Value
+k-Nearest Neighbors 	MAPE 	0.78
+k-Nearest Neighbors 	RMSE 	1,253,906
+k-Nearest Neighbors 	PPE10 	0.12
+Linear Regression 	MAPE 	0.86
+Linear Regression 	RMSE 	1,132,435
+Linear Regression 	PPE10 	0.10
+Random Forest 	MAPE 	0.45
+Random Forest 	RMSE 	769,135
+Random Forest 	PPE10 	0.24
+
+These results show that Linear Regression performs better when including
+the |Team| variable, but the other two models perform worse. Note that these are
+the results of a single run, and numbers are close enough that the
+samples used during each run could have an impact on this result. For
+robustness, we would have to run the analysis many times (without
+controlling the seed), and see what we get in average.
+
+Also note that these results show that the predictive powerful for these
+models is not good. We could try more domain-specific feature
+engineering to increase their predictive power, but that can take much
+time and is out of scope for now. Also note the pending issue with the |TOT_Cap.Hit| and |TOT_NHLid| variables.
+
+|results[["k_nearest_neighbors"]][["metrics"]]|
+
+|## $RMSE
+## [1] 1284583
+## 
+## $MAPE
+## [1] 0.7544434
+## 
+## $PPE10
+## [1] 0.1232394|
+
+|results[["linear_regression"]][["metrics"]]|
+
+|## $RMSE
+## [1] 1147471
+## 
+## $MAPE
+## [1] 0.8187676
+## 
+## $PPE10
+## [1] 0.1109155|
+
+|results[["random_forest"]][["metrics"]]|
+
+|## $RMSE
+## [1] 800012.7
+## 
+## $MAPE
+## [1] 0.4372943
+## 
+## $PPE10
+## [1] 0.221831|
+
+See the “variable” |importance|, for a Random Forests
+
+|results[["random_forest"]][["importance"]]|
+
+|## Warning: Removed 5 rows containing missing values (geom_point).|
+
+For “variable importance” for linear regression, you can look directly
+at the coefficients, standard errors, and p-values from the fitte model
+
+|summary(results[["linear_regression"]][["predictor"]]$finalModel)|
+
+|## 
+## Call:
+## NULL
+## 
+## Deviance Residuals: 
+##      Min        1Q    Median        3Q       Max  
+## -4796360   -881575     -1989    719147   8406536  
+## 
+## Coefficients:
+##                 Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)    2.873e+08  2.870e+07  10.009  < 2e-16 ***
+## TOT_StatusUFA  1.001e+06  1.184e+05   8.452  < 2e-16 ***
+## TOT_GS.G       2.165e+06  2.827e+05   7.658 3.71e-14 ***
+## TOT_DftYr     -1.471e+05  1.421e+04 -10.352  < 2e-16 ***
+## TOT_SCA        9.474e+02  2.733e+02   3.467 0.000544 ***
+## TOT_iBLK       6.014e+03  1.716e+03   3.504 0.000473 ***
+## TOT_Over       4.568e+04  1.713e+04   2.667 0.007759 ** 
+## TOT_DftRd     -1.454e+05  2.375e+04  -6.122 1.23e-09 ***
+## ES_TOI.QoC     3.074e+05  1.090e+05   2.821 0.004861 ** 
+## TOT_iPEND      1.408e+04  9.400e+03   1.498 0.134267    
+## TOT_GWG        7.769e+04  3.741e+04   2.077 0.038011 *  
+## TOT_iHF       -6.747e+03  1.807e+03  -3.734 0.000197 ***
+## TOT_SH.perc.   2.119e+03  1.296e+04   0.163 0.870218    
+## TOT_CntryCAN   1.136e+06  4.581e+05   2.481 0.013234 *  
+## TOT_CntryCHE   9.069e+05  5.727e+05   1.583 0.113567    
+## TOT_CntryCZE   1.428e+06  5.131e+05   2.782 0.005475 ** 
+## TOT_CntryDEU   1.283e+06  6.433e+05   1.994 0.046395 *  
+## TOT_CntryDNK   1.076e+06  6.168e+05   1.745 0.081223 .  
+## TOT_CntryEST   1.217e+06  1.165e+06   1.045 0.296371    
+## TOT_CntryFIN   9.858e+05  5.025e+05   1.962 0.050020 .  
+## TOT_CntryFRA   4.882e+05  8.095e+05   0.603 0.546569    
+## TOT_CntryGBR   1.438e+06  1.148e+06   1.252 0.210659    
+## TOT_CntryHRV  -5.255e+05  1.575e+06  -0.334 0.738750    
+## TOT_CntryITA   2.669e+06  1.555e+06   1.716 0.086342 .  
+## TOT_CntryKAZ   6.369e+05  1.554e+06   0.410 0.682049    
+## TOT_CntryLVA   1.564e+06  1.561e+06   1.002 0.316735    
+## TOT_CntryNLD   1.492e+05  1.563e+06   0.095 0.923962    
+## TOT_CntryNOR   1.008e+06  8.074e+05   1.248 0.212219    
+## TOT_CntryROU   1.574e+06  1.557e+06   1.011 0.312323    
+## TOT_CntryRUS   1.774e+06  4.988e+05   3.556 0.000390 ***
+## TOT_CntrySVK   1.465e+06  5.683e+05   2.577 0.010068 *  
+## TOT_CntrySVN   8.934e+06  1.155e+06   7.732 2.14e-14 ***
+## TOT_CntrySWE   1.575e+06  4.807e+05   3.277 0.001078 ** 
+## TOT_CntryUSA   9.651e+05  4.612e+05   2.093 0.036560 *  
+## PP_A1          1.181e+05  3.452e+04   3.421 0.000643 ***
+## TOT_Pace      -6.751e+03  5.149e+03  -1.311 0.190088    
+## PP_PEND       -1.416e+04  3.138e+04  -0.451 0.651982    
+## TOT_Post       5.381e+03  3.189e+04   0.169 0.866031    
+## PP_Pace        1.998e+03  1.236e+03   1.616 0.106258    
+## TOT_EPM        1.061e+04  1.005e+04   1.055 0.291535    
+## TOT_PM        -1.871e+04  5.092e+03  -3.675 0.000248 ***
+## TOT_IPP.perc. -1.105e+04  2.136e+03  -5.173 2.68e-07 ***
+## TOT_G.Snap     1.126e+04  3.427e+04   0.328 0.742622    
+## PP_GA          3.340e+04  6.153e+04   0.543 0.587314    
+## TOT_iHDf       6.078e+03  1.846e+03   3.292 0.001020 ** 
+## TOT_X1G        7.855e+04  3.386e+04   2.320 0.020513 *  
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for gaussian family taken to be 2.199484e+12)
+## 
+##     Null deviance: 7.2346e+15  on 1324  degrees of freedom
+## Residual deviance: 2.8131e+15  on 1279  degrees of freedom
+## AIC: 41463
+## 
+## Number of Fisher Scoring iterations: 2|
+
+
+    Predictions for specific player’s salary
+
+For one of Connor McDavid’s observations we have a relative good
+predictions, and, for the other, it seems to be very off. In other cases
+(which are random and thus different on each execution), results seem to
+be much better. It seems as if Connor McDavid is a difficult case for
+predictions.
+
+Data we will use for predictions:
+
+|select <- which(
+    colnames(data[["full"]]) %in%
+    c(colnames(selection[["data"]][["full"]]), ID_VARS)
+)
+d <- data[["full"]][, select]|
+
+Connor McDavid observations (note that there are two observations for him):
+
+|connor_mcdavid <- d[
+    d$Last.Name == "McDavid" &
+    d$First.Name == "Connor" &
+    d$Position == "C" &
+    d$Team == "EDM",
+]|
+
+Nine random players plus the two observatinos for Connor McDavid:
+
+|players <- d[sample(1:nrow(d), 9), ]
+players <- rbind(connor_mcdavid, players)|
+
+Get the actual predictions:
+
+|avoid <- -which(colnames(players) %in% c(
+    "Year",
+    "Last.Name",
+    "First.Name",
+    "Position"
+))
+predictions <- predict(
+    results[["random_forest"]][["predictor"]],
+    players[, avoid]
+)|
+
+Results for predictions, including Root-Square Error (RSE), Absolute
+Error (AE), and Absolute Percentage Error (APE).
+
+|results <- data.frame(
+    "First.Name" = players$First.Name,
+    "Last.Name" = players$Last.Name,
+    "Position" = players$Position,
+    "Team" = players$Team,
+    "Real" = players$Salary,
+    "Predicted" = predictions
+)
+results$RSE <- sqrt((results$Real - results$Predicted)^2)
+results$AE <- abs(results$Real - results$Predicted)
+results$APE <- results$AE / results$Real
+
+results|
+
+|##       First.Name Last.Name Position Team    Real Predicted        RSE
+## 510       Connor   McDavid        C  EDM  925000 1775711.5  850711.50
+## 2003      Connor   McDavid        C  EDM  925000 2773208.3 1848208.33
+## 2232        Jeff     Petry        D  MTL 6000000 5939776.3   60223.67
+## 14971     Samuel    Girard        D  COL  742500  863389.6  120889.58
+## 686        Kevin    Rooney        C  N.J  625000  670630.8   45630.80
+## 34        Mathew    Barzal        C  NYI  925000  908539.8   16460.20
+## 483      Brandon   Manning        D  PHI  950000 1392515.7  442515.71
+## 2151      Markus Nutivaara        D  CBJ  842500 2229214.3 1386714.30
+## 1646       Calle  Jarnkrok        C  NSH 1800000 2225297.8  425297.83
+## 15831       Nick    Holden        D  BOS 1800000 2167227.0  367227.00
+## 702         Luca     Sbisa        D  VAN 3600000 3435328.8  164671.23
+##               AE        APE
+## 510    850711.50 0.91968811
+## 2003  1848208.33 1.99806306
+## 2232    60223.67 0.01003728
+## 14971  120889.58 0.16281426
+## 686     45630.80 0.07300927
+## 34      16460.20 0.01779481
+## 483    442515.71 0.46580601
+## 2151  1386714.30 1.64595169
+## 1646   425297.83 0.23627657
+## 15831  367227.00 0.20401500
+## 702    164671.23 0.04574201|
+
