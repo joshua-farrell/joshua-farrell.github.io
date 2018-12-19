@@ -1,0 +1,486 @@
+---
+title: "Student Satisfaction Analysis"
+Author: "Joshua Farrell"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(out.width = "60%")
+
+source("./packages.R")
+source("./shared.R")
+source("./import.R")
+source("./select.R")
+source("./clean.R")
+source("./train.R")
+source("./graph.R")
+```
+
+
+This data science project compares Support Vector Machine, Random Forest, and Naive Bayes 
+machine learning models to predict student satisfaction from data aquired from a college 
+freshman survey given to students during freshman orientation. The dependant variables are 
+related to the following domains from the CIRP Freshman Survey (CIRP).  
+
+There were about 324 items in the CIRP Survey collected every three years between 200 and 2012
+
+- Established behaviors in high school
+- Academic preparedness
+- Admissions decisions
+- Expectations of college
+- Interactions with peers and faculty
+- Student values and goals
+- Student demographic characteristics
+- Concerns about financing college
+
+There were about 324 items in the CIRP Survey collected every three years between 2000 and 2012 these survey resuts were matched student survey results in the College Senior Survey Satisfaction Survey (CSS) 2004 through 2016. The dependant variables are taken from the CSS. There are three satisfaction items on a 5 point likert scale that will be collapsed to two classes. The items measure
+
+- Satisfaction with the overall college experience (overall)
+- Satisfaction with the quality instruction (instruction)
+- SSatisfaction with college communitu (community)
+
+After some manual cleaning using SPSS there were 124 variables in the dependent set. 
+Many items were removed do to inconsistencies over time or for direction from college 
+leadership.  
+
+## Data setup
+
+Setup your working directory:
+
+```{r}
+setwd("C:/Users/farre/Desktop/students")
+```
+In an attempt to create reusable R functions and tools many of the fucntions 
+and constants are called from R script functions files related to the function tasks.
+- import.R
+- clean.R
+- consants.R
+- graph.R
+- select.R
+- shared.r
+- trained.R
+
+The support fuction scripts are located here 
+https://github.com/joshua-farrell/joshua-farrell.github.io/tree/master/projects/student
+
+The import, cleaning, and separation processes are all applied in the following
+line. To see the details of what's happening take a look at the `import.R` and
+`clean.R` files, but generally we're importing the CSV without converting string
+variables into vectors, then we do the following:
+
+1. Convert invalid values to NAs
+2. Impute NAs using the most common value for a variable
+3. Convert ordinal variables were appropriate
+4. Convert categorical variables were appropriate
+5. Collapse categories in `SAT_*` variables into two groups
+
+```{r}
+data <- clean(import("./data/data.csv"))
+```
+
+We have a very unbalanced predictive problem: in all three cases, the ratio is
+around 0.90 to 0.95 in the `Satisfied` category. Such a large disproportion can
+have large negative effects in the predictive power of the models, and we
+therefore use the `Kappa` metric instead of the `Accuracy` metric to better
+measure the predictive power of our models (configuration changes can be made in the in the `constants.R` file).
+
+To help reduce the impact of such imbalance we do two things. We use Synthetic
+Minority Over-sampling TEchnique (SMOTE) to oversample the minority class and
+undersample the majority class, which will produce a more balanced dataset. The
+following code shows the difference in the proportions before and after the
+re-sampling technique is used.
+
+Category proportions for each dependent before balancing:
+
+```{r}
+category_proportions(data, "SAT_OVERALL")
+category_proportions(data, "SAT_COMMUNITY")
+category_proportions(data, "SAT_INSTRUCTION")
+```
+
+Mosaic graphs for each dependent before balancing:
+
+```{r}
+mosaic(data, "SAT_OVERALL", "SAT_COMMUNITY")
+```
+
+```{r}
+mosaic(data, "SAT_OVERALL", "SAT_INSTRUCTION")
+```
+
+```{r}
+mosaic(data, "SAT_COMMUNITY", "SAT_INSTRUCTION")
+```
+
+Balloon graphs for each dependent before balancing:
+
+```{r}
+balloon(data, "SAT_OVERALL", "SAT_COMMUNITY")
+```
+
+```{r}
+balloon(data, "SAT_OVERALL", "SAT_INSTRUCTION")
+```
+
+```{r}
+balloon(data, "SAT_COMMUNITY", "SAT_INSTRUCTION")
+```
+
+Balance the data by calling the balance() funtion from the `clean.R` file.  As indicated this funtion uses SMOTE sampling:
+
+```{r}
+data <- balance(data)
+```
+
+Category proportions for each dependent after balancing:
+
+```{r}
+category_proportions(data, "SAT_OVERALL")
+category_proportions(data, "SAT_COMMUNITY")
+category_proportions(data, "SAT_INSTRUCTION")
+```
+
+Mosaic graphs for each dependent after balancing:
+
+```{r}
+mosaic(data, "SAT_OVERALL", "SAT_COMMUNITY")
+```
+
+```{r}
+mosaic(data, "SAT_OVERALL", "SAT_INSTRUCTION")
+```
+
+```{r}
+mosaic(data, "SAT_COMMUNITY", "SAT_INSTRUCTION")
+```
+
+Balloon graphs for each dependent after balancing:
+
+```{r}
+balloon(data, "SAT_OVERALL", "SAT_COMMUNITY")
+```
+
+```{r}
+balloon(data, "SAT_OVERALL", "SAT_INSTRUCTION")
+```
+
+```{r}
+balloon(data, "SAT_COMMUNITY", "SAT_INSTRUCTION")
+```
+
+These visualizations confirm a much more balanced sample.
+
+When sampling data for our training and testing data sets, we apply stratified
+sampling to make sure we keep the proportions reached by the SMOTE technique
+while creating the two data subsets (`train` and `test`), plus the original one
+saved in the `full` attribute. To access the three different datasets we created
+(i.e. `full`, `train`, and `test`) you can access the respective elements of the
+`data` object as shown in the examples below.
+
+The seperate() function is in the `clean.R` file 
+
+```{r}
+data <- separate(data)
+```
+
+Some examples of how to interact with this object are shown below (wihtout
+output):
+
+```r
+nrow(data[["full"]])
+nrow(data[["train"]])
+nrow(data[["test"]])
+
+head(data[["full"]])
+names(data[["full"]])
+summary(data[["full"]])
+```
+
+## Visualizations
+
+Since almost all variables are categorical, we don't have too much room to play
+with visualizations, but we use two main types of graphs: mosaics and
+correspondence analysis. Mosaic graphs allow us to visualize the conditional
+distributions in the data we're analyzing, and to understand where subgroups are
+deviating from the implied random distributions. Correspondence analysis helps
+understand the relationships among the variable values. It's similar to
+Principal Component Analysis (PCA) but focuses on relative rather than absolute
+differences, which is what we want in this case to understand relative
+distributions, which helps for variable selection.
+
+For the mosaic graphs, the area of the mosaic reflects the relative magnitude of
+the values. Blue colors indicate observed values are higher than expected
+values, if the data were random. Red colors indicate observed values are lower
+than expected values, if the data were random.
+
+The the correspondence analysis, all the blue values correspond to one variable,
+and the red ones to the other. The closer they are in the graph, the more likely
+they occur together in the data, and viceversa. Keep in mind that thes graphs
+will only be created when there are at least three categories for each of the
+two categorical variables used in each case. This is a requirements of the
+correspondence analysis.
+
+There are lots of combinations to try, so we automate the process of creating
+all of the possible combinations and saving the graphs to disk so that it's
+easier to go through them using the operating system's image explorer (look for
+them in side the `graphs/` directory). There are interesting findings when going
+through those graphs.
+
+Next we show the same information visualized using the three different mentioned
+techniques. It can be used to get a better sense for the data by looking at it
+from different points of view.
+
+```{r, out.width = "100%"}
+mosaic(data, "HOURS_WORKING_PAY", "SAT_OVERALL")
+```
+
+```{r, out.width = "100%"}
+balloon(data, "HOURS_WORKING_PAY", "SAT_OVERALL")
+```
+
+Correspondence analysis only makes sense when there are at least 
+three categories in each categorical variable. This graph looks a two predictors
+since our dependant variables have two possible values
+
+
+```{r, out.width = "100%"}
+correspondence(data, "HOURS_WORKING_PAY", "GOAL_FINANCIAL")
+```
+
+The following functions (from the `graph.R` file) allow you create and save 
+visualizations for combinations you would like if the plot funtion shares 
+the sme argument structure. in this case `(data, var1, var2)` 
+
+> **CAUTION**:Executing these lines can take a long time because there are
+> thousands of graphs being created for each of the three types of graphs. The way
+> this document is configured they will not be executed to avoid any accidents.
+
+```r
+create_and_save_all_graphs(data, "correspondence")
+create_and_save_all_graphs(data, "balloon")
+create_and_save_all_graphs(data, "mosaic")
+```
+
+## Variable selection
+
+Variable selection is performed with Recursive Feature Elimination (RFE). The
+`selection_*` objects contain the following attributes: `data` which is the data
+with the variable selection applied, `graph` which shows the accuracy change as
+more variables are added, `n_variables` which is the number of variables
+selected, and `variables` which are the variables actually selected. Internally,
+Random Forests are used to measure variable importance. The Selection functions are
+located in the `selection.R` file.
+
+```{r, include = TRUE}
+selection_overall <- variable_selection(data, "SAT_OVERALL")
+```
+
+The selection for the "community" and "instruction" dependent variables can be
+accomplished with the following code (which is not actually run because it will
+not be used in this document, but is left as reference):
+
+```r
+selection_instruction <- variable_selection(data, "SAT_INSTRUCTION")
+selection_community <- variable_selection(data, "SAT_COMMUNITY")
+```
+
+To explore the results for the selection for "overall", you can use the
+following to see the filtered datasets, variables, and optimization graph. The
+output is not shown to preserve space, but each of those would show the first
+couple of rows of each dataset (train, test, and full).
+
+```{r}
+head(selection_overall[["data"]][["full"]])
+head(selection_overall[["data"]][["train"]])
+head(selection_overall[["data"]][["test"]])
+```
+
+To see the variables found to be with the most predictive power, we can
+use the following code, which shows the number of variables and the variable
+names themselves.
+
+```{r}
+selection_overall[["n_variables"]]
+selection_overall[["variables"]]
+```
+
+To see a graph of how the predictive accuracy changes as we add more variables,
+we can look at the following graph. The filled dot corresponds to the selected
+case.
+
+```{r, out.width = "100%"}
+selection_overall[["graph"]]
+```
+
+## Model application
+
+> *Our model application becomes problematic because there is a very low
+> number of observations per year for some samples. To avoid the problem, I'm
+> currently setting the `YEAR_FS` value to `ALL` for all observations 
+> (essentially removing 'year of CSS survey' from the model) we can relax this 
+> later to test what recategorization makes more sense.*
+
+```{r}
+val <- "ALL"
+var <- "YEAR_FS"
+data <- recode_variable(data, var, val)
+selection_overall[["data"]] <- recode_variable(
+    selection_overall[["data"]], var, val
+)
+```
+
+The same goes for the other dependents (which we are not using in this document,
+so their code will not be executed).
+
+```r
+selection_community[["data"]] <- recode_variable(
+    selection_community[["data"]], var, val
+)
+selection_instruction[["data"]] <- recode_variable(
+    selection_instruction[["data"]], var, val
+)
+```
+
+To specify which models we want to use we use the following. The first string
+(e.g. "random_forest") is an identifier created by us to know what model we're
+working with, and the second string (e.g. "rf") is an ID for the model we want
+to use that is recognized by the `caret` package. Feel free to add other models,
+you can find the full list here:
+https://topepo.github.io/caret/available-models.html
+
+> These models depend on external packages. If you don't have installed in your
+> system, when you execute the code, you'll be notified that you don't have them,
+> and you'll be asked whether you want to install them. If you do, execution will
+> continue normally after the corresponding installations.
+
+```{r}
+models <- list(
+    "random_forest" = "rf",
+    "support_vector_machine" = "svmRadial",
+    "naive_bayes" = "naive_bayes"
+)
+```
+
+We now proceed to find the best model for each year with cross-validation (calling 
+the CV function frome the `train.R` file):
+
+```{r}
+overall_results <- best_results_per_year(
+    selection_overall[["data"]],
+    "SAT_OVERALL",
+    models
+)
+```
+
+To accomplish the same for the other dependents, we can use the following code,
+which is not actually executed in this blog as we focus on overall satisfaction.
+
+```r
+community_results <- best_results_per_year(
+    selection_community[["data"]],
+    "SAT_COMMUNITY",
+    models
+)
+instruction_results <- best_results_per_year(
+    selection_instruction[["data"]],
+    "SAT_INSTRUCTION",
+    models
+)
+```
+
+## Results
+
+
+To compare the predictive power, you may want to look at the predictive power of
+each model and each dependent variable. You can find these
+values in the `metrics` attribute in each case.
+
+Note that in some cases there may be no variable importance information (it
+depends on whether or not the model used is able to produce it), and there may
+also not be a ROC curve to show (in the case were the sample did not have at
+least one case for one of the categories). To fix this last case we would have
+to use stratified-sampling.
+
+> The follwing script included year which would be valuable exploration accross years.
+> However, year has been collapsed to 'ALL' to effectively remove year from the model.
+
+Years available:
+
+```{r}
+names(overall_results)
+```
+
+Models available:
+
+```{r}
+names(overall_results[["Y_ALL"]])
+```
+
+Result objects available for model selection:
+
+```{r}
+names(overall_results[["Y_ALL"]][["random_forest"]])
+```
+
+See the `predictor` object, for Random Forest:
+
+```{r}
+overall_results[["Y_ALL"]][["random_forest"]][["predictor"]]
+```
+
+```{r}
+overall_results[["Y_ALL"]][["support_vector_machine"]][["metrics"]]
+overall_results[["Y_ALL"]][["random_forest"]][["metrics"]]
+overall_results[["Y_ALL"]][["naive_bayes"]][["metrics"]]
+```
+
+
+See the "optimization" `graph`, for Random Forest:
+
+```{r}
+overall_results[["Y_ALL"]][["random_forest"]][["graph"]]
+```
+
+See the "variable" `importance`, for a given Random Forest (from these
+three models, only Random Forests provide `importance`):
+
+```{r, out.width = "100%", fig.height = 10}
+overall_results[["Y_ALL"]][["random_forest"]][["importance"]]
+```
+
+See the "test" data set `roc`, for our Random Forest model:
+
+```{r}
+predictor <- overall_results[["Y_ALL"]][["random_forest"]][["predictor"]]
+roc(predictor, data[["test"]], "SAT_OVERALL")
+```
+
+The results I'm seeing on average are following. Note that these may be
+different every time you run the analysis because we're not controlling the
+"seed" for the randomized algorithmns (this is done on purpose to see variuos
+results, but for publishing or sharing results with someone else, we should
+control the seed).
+
+| Model | Accuracy | Kappa |
+|-------|----------|-------|
+| Support Vector Machine | 0.6637 | 0.3274 |
+| Random Forest | 0.7876 | 0.5752 |
+| Naive Bayes | 0.6327 | 0.2655 |
+
+The Random Forest model is the best overal model. It is worth noting 
+that the sensitivity is slightly higher with naive bayes model.  Depending on the 
+situation it may be useful to use a model that optimized sensitivity at 
+the expense of overall accuracy.  We want to catch as many students likely
+to be dissatisfied as possible.   
+
+
+## Discusssion
+
+The data collection has been imporoving and the quality and response rate 
+improves with each survey cycle. THe current model (with much polishing and tuning) 
+may give insight into admissions and intrusive advising practices,e.g. targeting 
+interventions at freshman groups predicted less likely to be satisfied. As the sample size and 
+data quality improve it seems likely that models can be improved by adding variation accross time.     
