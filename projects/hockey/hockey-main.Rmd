@@ -1,0 +1,559 @@
+---
+title: "NHL Salary Prediction Analysis"
+Author: "Joshua Farrell"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(out.width = "60%")
+knitr::opts_chunk$set(fig.align = "center")
+
+source("./packages.R")
+source("./shared.R")
+source("./import.R")
+source("./select.R")
+source("./clean.R")
+source("./train.R")
+source("./graph.R")
+```
+In order to predict how much an NHL hockey player makes, many things are taken 
+into consideration. What a player is worth, related to his future performance 
+on the ice, is the a most useful but very difficult construct to predict. 
+However, knowing the relationship between a player's market value and current 
+variables such as performance statistics and demographics, can help players, 
+agents and general managers. Stakeholders can use this relation to make 
+decisions during contract negotiations and can help GM's make decisions about 
+which players they can afford to chase and sign. I will be using a machine 
+learning models to predict NHL player salary. This will be a supervised 
+classification problem comparing GLM regression, Random Forest and K-Nearest 
+Neighbors models. 
+
+The NHL and many other interested parties collect and derive an almost 
+uncountable number of statistics related to player performance 
+
+the following data domains have many variables each 
+
+- All-in-one stats aggregate stats like Point Shares
+
+- Contractual information
+
+- The equipment the player uses
+
+- Stats about faceoffs
+
+- Additional information about the player's goals and shots.
+
+- How the team performs with that player on the ice
+
+- Stats about penalties taken and drawn
+
+- demographics 
+
+- Stats about a player's deployment
+
+- Traditional stats, like goals and assists
+
+- How the player's opponents perform, quality of competition
+
+- How the player's teammates perform
+
+- The team's shot attempt stats when the player was on the ice
+
+- The team's unblocked shot attempts when the player was on the ice
+
+- How the team goal stats when player on the ice
+
+- How the team does in terms of scoring chances/ect 
+
+- How the team does on the shot clock with that player on the ice
+
+- The zones in which a player's shifts started
+
+
+Many of these variables are duplicates across palyer situations 
+including total stats (TOT), even strength (ES) stats, 
+and penitly kill (PK) stats.  The punchline is that we have several 
+hundred variables at our disposal.  
+
+## Data Setup
+
+Setup your working directory:
+
+```{r}
+setwd("C:/Users/farre/Desktop/nhl")
+```
+
+Import the data:
+
+The data has been collected and merged into .CSV files from the
+following sources  
+
+https://www.hockeyabstract.com
+
+https://www.hockey-reference.com/
+
+http://corsica.hockey/
+
+https://www.corsicahockey.com/nhl/players/nhl-player-stats
+
+
+
+```{r}
+data <- import("./data")
+```
+
+I'm not going very deep into what variables are polluted due to the amount of
+time this has taken and doing so would take, but there are some variables that
+are clearly polluted and their values should be checked. For example, `TOT_CHIP`
+has values that have monetary representations but also others that don't, and
+which don't seem to be in the same units of scale. When doing the data cleaning, 
+this are all transformed into numeric variables, but they are problematic and 
+should be investigated further. THis variable will be removed from the anlysis.
+
+The proportion of NAs in the data is very large. So we need a mechanism to reduce 
+the proportion of NAs while trying to keep most of the useful information.
+
+If you want to see proportions in a case-by-case (i.e. "by row" or "by column"),
+you can remove the `summary()` function that is wrapping it.
+
+```{r}
+summary(proportion_of_nas_per_observation(data))
+summary(proportion_of_nas_per_variable(data))
+```
+
+To reduce the NA proportions in the data, we look for observations and variables
+that have proportions larger than `NA_OBS_PROPORTION_THRESHOLD` and
+`NA_VAR_PROPORTION_THRESHOLD`, respectively, and delete them if they do. In the
+case of variables, there's a `NA_VAR_WHITELIST` variable that will keep any
+variables inside it, even if they don't pass the NAs proportion test. All of
+these constants can be modified in the `constants.R` file.
+
+
+```{r}
+before_n_obs <- nrow(data)
+before_n_vars <- ncol(data)
+```
+
+```{r}
+data <- clean(data)
+```
+
+We apply our cleaning process and this also acts as an initial variable
+selection procedure, and it can be relaxed or made more restrictive by modifying
+the `NA_OBS_PROPORTION_THRESHOLD` and `NA_VAR_PROPORTION_THRESHOLD` in the
+`constants.R` file.
+
+```{r}
+summary(proportion_of_nas_per_observation(data))
+summary(proportion_of_nas_per_variable(data))
+
+ncol(data) / before_n_vars
+nrow(data) / before_n_obs
+```
+
+This is the clean and pre-processed data set, and it's saved for reference
+(before teh variable selection process is applied), since it may be easier to
+check for correctness outside of R.
+
+```{r}
+write.csv(data, "./data.csv", row.names = FALSE)
+dim(data)
+```
+The cleaning process has left us with 912 cases (players) 647 variables including 
+one dependent. 
+
+Now we are going to impute the mode to each NA in each categorical variable, and
+the mean for numerical variables.  There is still very
+large number of NAs. These will produce errors in our variable selection and model
+training processes. After the imputation, we separete the data into our train,
+test, and full data sets
+
+```{r}
+data <- separate(impute(data))
+```
+
+## Visualizations
+
+Here is a look a the shape of the Salary distribution:
+
+```{r}
+options(scipen = 999)
+hist(data[["full"]]$Salary, main = NULL, xlab = "Salary")
+```
+
+correlation and scatter plots for variable exploration: 
+
+Since there's a very large number of numeric variables, we can't generate a
+single correlations plots that has all the information simultaneously. We show
+the correlations by variable random samples, which means that you should execute
+the following code multiple times to get a rough estimate of the correlations
+among all variables.
+
+```{r, fig.height = 10, fig.width = 10, out.width = "100%"}
+random_correlations_graph(data, n_variables = 20)
+```
+
+```{r, fig.height = 10, fig.width = 10, out.width = "100%"}
+random_correlations_graph(data, n_variables = 20)
+```
+
+```{r, fig.height = 10, fig.width = 10, out.width = "100%"}
+random_correlations_graph(data, n_variables = 20)
+```
+
+The following code automatically generate multiple correlations graphs and
+saves them to disk for you. You can modify the parameters to your liking.
+Values marked with a cross on top of them mean that their p-value is larger
+than 0.01.
+
+```r
+generate_multiple_random_correlation_graphs(
+    n_variables = 20,
+    n_graphs = 10,
+    data = data
+)
+```
+
+We are also able to create scatter plots where the size of each point is
+determined a variable's value, and the color is determined by the salary. Some
+examples of the different patterns that can be found with these graphs are the
+following. Note that to interpret these correctly, good domain knowledge about
+NHL and the measured variables is required.  But even if you know nothing, 
+some interesting ideas can be infered for data cleaning and feature
+engineering purposes. Like the folowing, there are many other interesting 
+patterns hidden in this data.
+
+```{r, out.width = "100%"}
+scatter_graph_with_size_and_salary_color(
+    data,
+    x = "ES_CF.QoC",
+    y = "TOT_FOL.Close",
+    size = "PK_CF.QoT"
+)
+```
+
+```{r, out.width = "100%"}
+scatter_graph_with_size_and_salary_color(
+    data,
+    x = "ES_CF.QoT",
+    y = "PK_PDO",
+    size = "PK_iHDf"
+)
+```
+
+```{r, out.width = "100%"}
+scatter_graph_with_size_and_salary_color(
+    data,
+    x = "ES_DZS.1",
+    y = "PK_TOI.QoT",
+    size = "ES_iCF"
+)
+```
+
+```{r, out.width = "100%"}
+scatter_graph_with_size_and_salary_color(
+    data,
+    x = "ES_F.Tied",
+    y = "ES_C.Tied",
+    size = "PP_iPEND"
+)
+```
+
+```{r, out.width = "100%"}
+scatter_graph_with_size_and_salary_color(
+    data,
+    x = "ES_FA",
+    y = "ES_GF.1",
+    size = "ES_F.Down"
+)
+```
+
+```{r, out.width = "100%"}
+scatter_graph_with_size_and_salary_color(
+    data,
+    x = "ES_iHA",
+    y = "TOT_iHA",
+    size = "ES_iSF.1"
+)
+```
+
+To create `n_graphs` random graphs (the combinations for all available graphs
+are too much to create at once, it would be around 10,827,401) we use the
+following:
+
+> **CAUTION**: The following code can take a long time to finish depending on
+> how many graphs you specify. To avoid any problems, it's not activiated here and
+> is just left as reference.
+
+```r
+generate_multiple_random_scatter_graphs(
+    n_graphs = 100,
+    data = data
+)
+```
+
+The scatter plots created show some very interesting behavior for many
+combinations. Those visualizations together with domain knowledge around the
+problem can help with cleaning and feature engineering to increase the
+predictive power of the models, and it's something that I to be explored 
+further.
+
+## Variable Selection
+
+Variable selection is performed with two steps. First, we remove variables
+to address Multicollinearity. The logic behind this is that if predictors are
+highly correlated with each other the information they provide for the analysis 
+is redundant, and, given the large number of variables in the analysis, we want 
+to minimize the number of them while we maximize the information kept. The second 
+step is performed with Recursive Feature Elimination (RFE).
+
+The `selection` object contains the following attributes: `data` which is the
+data with the variable selection applied, `graph` which shows the accuracy
+change as more variables are added, `n_variables` which is the number of
+variables selected, and `variables` which are the variables actually selected.
+Internally, Random Forests are used to measure variable importance.
+
+```{r}
+selection <- variable_selection(data, "Salary")
+```
+
+To explore the selection results, you can use the following to see the filtered
+datasets, variables, and optimization graph.
+
+```r
+head(selection[["data"]][["full"]])
+head(selection[["data"]][["train"]])
+head(selection[["data"]][["test"]])
+```
+
+```{r}
+selection[["n_variables"]]
+selection[["variables"]]
+```
+
+```{r, out.width = "100%"}
+selection[["graph"]]
+```
+
+## Model Application
+
+Using the model vector and called funtions simplifies the process 
+of training, tuning and applying the models to the data. I am comparing the 
+GLM, KNN and RF models.  The full list is here: 
+list here: https://topepo.github.io/caret/available-models.html
+
+These models depend on external packages. If you don't have installed in your
+system, when you execute the code, you'll be notified that you don't have them,
+and you'll be asked whether you want to install them. If you do, execution will
+continue normally after the corresponding installations.
+
+```{r}
+models <- list(
+    "random_forest" = "rf",
+    "linear_regression" = "glm",
+    "k_nearest_neighbors" = "knn"
+)
+```
+
+```{r}
+results <- best_results(selection[["data"]], "Salary", models)
+```
+
+## Results Exploration
+
+The `metrics` attribute has find three different accuracy metrics: `RMSE` (Root
+Mean Squared Error), `MAPE` (Mean Absolute Percentage Error), and `PPE10`
+(Percentage Predicted Error within 10%).
+
+Models available:
+
+```{r}
+names(results)
+```
+
+Random Forest results:
+
+```{r}
+names(results[["random_forest"]])
+```
+
+See the `predictor` object for Random Forests:
+
+```{r}
+results[["random_forest"]][["predictor"]]
+```
+
+The results I'm seeing in average are the following. Note that these may be
+different every time you run the analysis because we're not controlling the
+"seed" for the randomized algorithmns (this is done on purpose to see variuos
+results, but for publishing or sharing results with someone else, we should
+control the seed).
+
+| Model | Metric | Value |
+|-------|--------|-------|
+| k-Nearest Neighbors | MAPE | 0.73 |
+| k-Nearest Neighbors | RMSE | 1,124,504 |
+| k-Nearest Neighbors | PPE10 | 0.1843 |
+| Linear Regression | MAPE | 0.82 |
+| Linear Regression | RMSE | 1,029,118 |
+| Linear Regression | PPE10 | 0.1099 |
+| Random Forest | MAPE | 0.4722 |
+| Random Forest | RMSE | 720,575 |
+| Random Forest | PPE10 | 0.2553 |
+
+The results without the `Team` variable are (may be different for you):
+
+| Model | Metric | Value |
+|-------|--------|-------|
+| k-Nearest Neighbors | MAPE | 0.7182 |
+| k-Nearest Neighbors | RMSE | 1,145,584 |
+| k-Nearest Neighbors | PPE10 | 0.1276 |
+| Linear Regression | MAPE | 0.7932 |
+| Linear Regression | RMSE | 1,022,017 |
+| Linear Regression | PPE10 | 0.1134 |
+| Random Forest | MAPE | 0.4237 |
+| Random Forest | RMSE | 759,186 |
+| Random Forest | PPE10 | 0.2234 |
+
+These results show that Linear Regression performs better when including the
+`Team` variable, but the other two models perform worse. Note that these are the
+results of a single run, and numbers are close enough that the samples used
+during each run could have an impact on this result. For robustness, we would
+have to run the analysis many times (without controlling the seed), and see what
+we get in average.
+
+Also note that these results show that the predictive powerful for these models
+is not good.
+
+
+```{r}
+results[["k_nearest_neighbors"]][["metrics"]]
+results[["linear_regression"]][["metrics"]]
+results[["random_forest"]][["metrics"]]
+```
+
+See the "variable" `importance`, for a Random Forests
+
+```{r, fig.height = 10, out.width = "100%"}
+results[["random_forest"]][["importance"]]
+```
+
+For "variable importance" for linear regression, you can look directly at the
+coefficients, standard errors, and p-values from the fitte model
+
+```{r}
+summary(results[["linear_regression"]][["predictor"]]$finalModel)
+```
+
+Note that these are the results of a single run, and numbers are close 
+enough that the samples used during each run could have an impact
+on this result. For robustness, we can run the analysis many 
+times (without controlling the seed), and explore the central tendancy 
+and variation. 
+
+The mean results after 20 iterations are in the folowing table. 
+I did not set the seed to explore variation in results, 
+but for publishing or sharing results, we would control the seed.
+
+
+| Model | Metric | Value |
+|-------|--------|-------|
+| k-Nearest Neighbors | MAPE | 0.7182 |
+| k-Nearest Neighbors | RMSE | 1,145,584 |
+| k-Nearest Neighbors | PPE10 | 0.1276 |
+| Linear Regression | MAPE | 0.7932 |
+| Linear Regression | RMSE | 1,022,017 |
+| Linear Regression | PPE10 | 0.1134 |
+| Random Forest | MAPE | 0.4237 |
+| Random Forest | RMSE | 759,186 |
+| Random Forest | PPE10 | 0.2234 |
+
+Also note that these results show that the predictive powerful for 
+these models is terrible (which I will discuss in the discussion below)
+The Random Forest model only predicted 22% of the players salaries 
+within 10% of there actual salary.  
+
+
+## Sample Predictions
+
+My favourite player is Connor McDavid of MY Edmonton Oilers so chose 
+to look at his case and 9 other random players from the data
+
+Data we will use for predictions:
+
+```{r}
+select <- which(
+    colnames(data[["full"]]) %in%
+    c(colnames(selection[["data"]][["full"]]), ID_VARS)
+)
+d <- data[["full"]][, select]
+```
+
+Connor McDavid observation:
+
+```{r}
+connor_mcdavid <- d[
+    d$Last.Name == "McDavid" &
+    d$First.Name == "Connor" &
+    d$Position == "C" &
+    d$Team == "EDM",
+]
+```
+
+Nine random players plus the two observatinos for Connor McDavid:
+
+```{r}
+players <- d[sample(1:nrow(d), 9), ]
+players <- rbind(connor_mcdavid, players)
+```
+
+Get the actual predictions:
+
+```{r}
+avoid <- -which(colnames(players) %in% c(
+    "Year",
+    "Last.Name",
+    "First.Name"
+))
+predictions <- predict(
+    results[["random_forest"]][["predictor"]],
+    players[, avoid]
+)
+```
+
+Results for predictions, including Root-Square Error (RSE), Absolute Error (AE),
+and Absolute Percentage Error (APE).
+
+```{r}
+res <- data.frame(
+    "First.Name" = players$First.Name,
+    "Last.Name" = players$Last.Name,
+    "Position" = players$Position,
+    "Team" = players$Team,
+    "Real" = players$Salary,
+    "Predicted" = predictions
+)
+res$RSE <- sqrt((res$Real - res$Predicted)^2)
+res$AE <- abs(res$Real - res$Predicted)
+res$APE <- res$AE / res$Real
+
+res
+```
+
+## Discussion
+
+I was curious to see of one year of data could produce a good prediction 
+model for salary. This was not the case.  There is a great deal of model 
+polishing and tuning that could still be done, however, this dataset is limited.
+The data for the model only included one year (when a second year was added 
+there was not improvement).  The data does not take into accound change in 
+salary contracts over time and status.  For example Connor McDavid won the 
+scoring title but was in his first contract, which is capped at $950,000 by NHL mandate. 
+In the following Year his salary increased to 12.5 Million. THis example illustrates 
+the obvious short comings of my dataset. I had a difficult time finding 
+the appropriate contract data to match but this is a necessary next step.
+
+
