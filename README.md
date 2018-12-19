@@ -1,10 +1,10 @@
 # Project Repository
 
-This github repostitory serves to hold my data science protfolio projects. 
+This github repostitory serves to hold my data science portfolio projects. 
 
 ### Project posts
 
-The project post .md files are located in the posts folder
+The project post .md files are located in the _posts folder
 
 ### Project files 
 
