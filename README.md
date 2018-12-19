@@ -8,7 +8,7 @@ The project post .md files are located in the posts folder
 
 ### Project files 
 
-.rmd markdown project blog files and related .r scripts are located in the shareddocs folder
+.rmd markdown project blog files and related .r scripts are located in the projects folder
 
 ### Portfolio page
 
